@@ -1,168 +1,377 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>DAILY2KART – 4 Item Store</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', sans-serif;
-      background: #f9f9f9;
-      color: #333;
-    }
-    header {
-      background: #fff;
-      padding: 1rem 2rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      position: sticky;
-      top: 0;
-      z-index: 10;
-    }
-    .logo {
-      font-weight: bold;
-      font-size: 1.2rem;
-    }
-    nav a {
-      margin-left: 1.5rem;
-      text-decoration: none;
-      color: #555;
-    }
-    .hero {
-      padding: 4rem 2rem;
-      text-align: center;
-      background: #e0f7fa;
-    }
-    .hero h1 {
-      margin-bottom: 1rem;
-      font-size: 2rem;
-    }
-    .hero button {
-      padding: 0.8rem 1.5rem;
-      background: #00796b;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      font-size: 1rem;
-    }
-    .products {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 2rem;
-      padding: 2rem;
-    }
-    .product {
-      background: white;
-      padding: 1rem;
-      border-radius: 10px;
-      text-align: center;
-      box-shadow: 0 1px 5px rgba(0,0,0,0.1);
-    }
-    .product img {
-      max-width: 100%;
-      height: 150px;
-      object-fit: contain;
-    }
-    .product h3 {
-      margin: 0.5rem 0;
-    }
-    .product p {
-      font-size: 0.9rem;
-      color: #666;
-    }
-    .product button {
-      background: #00796b;
-      color: white;
-      border: none;
-      padding: 0.6rem 1.2rem;
-      margin-top: 0.5rem;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    .cart {
-      position: fixed;
-      top: 1rem;
-      right: 1rem;
-      background: #ff5722;
-      color: white;
-      padding: 0.5rem 1rem;
-      border-radius: 50px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    @media(max-width: 600px) {
-      .hero h1 {
-        font-size: 1.5rem;
-      }
-    }
-  </style>
-</head>
-<body>
+  <title>DAILY2KART – Shop Now</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <header>
-    <div class="logo">
-  <img src="images/daily2kart-logo.png" alt="DAILY2KART" style="height: 40px;">
-</div>
-    <nav>
-      <a href="#">Home</a>
-      <a href="#">Contact</a>
-    </nav>
-  </header>
-
-  <div class="hero">
-    <h1>Welcome to DAILY2KART – 4 Best Picks!</h1>
-    <button onclick="scrollToProducts()">Shop Now</button>
-  </div>
-
-  <div class="products" id="productSection">
-    <div class="product">
-      <img src="https://via.placeholder.com/150" alt="Product 1"/>
-      <h3>Item One</h3>
-      <p>High-quality item you'll love.</p>
-      <p>$25.00</p>
-      <button onclick="addToCart()">Add to Cart</button>
-    </div>
-    <div class="product">
-      <img src="https://via.placeholder.com/150" alt="Product 2"/>
-      <h3>Item Two</h3>
-      <p>Perfect for everyday use.</p>
-      <p>$30.00</p>
-      <button onclick="addToCart()">Add to Cart</button>
-    </div>
-    <div class="product">
-      <img src="https://via.placeholder.com/150" alt="Product 3"/>
-      <h3>Item Three</h3>
-      <p>Stylish and reliable.</p>
-      <p>$40.00</p>
-      <button onclick="addToCart()">Add to Cart</button>
-    </div>
-    <div class="product">
-      <img src="https://via.placeholder.com/150" alt="Product 4"/>
-      <h3>Item Four</h3>
-      <p>Best value in the market.</p>
-      <p>$20.00</p>
-      <button onclick="addToCart()">Add to Cart</button>
-    </div>
-  </div>
-
-  <div class="cart" id="cart">🛒 0</div>
-
+  <!-- ✅ Load Tailwind first -->
+  <script src="https://cdn.tailwindcss.com"></script>
   <script>
-    let cartCount = 0;
+  tailwind.config = {
+    darkMode: 'class'
+  };
+  </script>
 
-    function addToCart() {
-      cartCount++;
-      document.getElementById('cart').innerText = `🛒 ${cartCount}`;
+
+  <!-- ✅ Then load your custom styles to override Tailwind -->
+  <link rel="stylesheet" href="style.css?v=9" />
+
+  <!-- Other scripts -->
+  <script src="https://unpkg.com/feather-icons"></script>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+</script>
+// ✅ Add Admin Role Check after Supabase script
+    let isAdmin = false;
+
+    async function checkIfAdmin(userId) {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error('Admin check failed:', error);
+        return false;
+      }
+
+      isAdmin = data?.is_admin || false;
+      return isAdmin;
     }
 
-    function scrollToProducts() {
-      document.getElementById('productSection').scrollIntoView({ behavior: 'smooth' });
+    // ✅ Example usage after login
+    async function afterLogin() {
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData?.user?.id;
+      if (userId) await checkIfAdmin(userId);
     }
   </script>
 
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 animated-bg">
+
+  <!-- HEADER -->
+  <header class="sticky top-0 z-40 shadow-lg animated-bg-header">
+    <div class="container mx-auto px-4 py-3 flex flex-col md:flex-row items-center justify-between relative">
+      <div class="flex items-center gap-3">
+        <span class="text-2xl font-extrabold text-pink-500">DAILY2KART</span>
+        <span class="hidden md:inline text-xs bg-pink-100 text-pink-600 px-2 py-1 rounded">Live</span>
+      </div>
+      <nav class="flex-1 flex justify-center items-center gap-3">
+        <a href="#" class="nav-btn">Home</a>
+        <div class="relative nav-btn">
+        <button onclick="toggleBrandDropdown()" id="brandDropdownBtn" class="flex items-center gap-1"> Brand <i data-feather="chevron-down" class="w-3"></i>
+        </button>
+        <div id="brandDropdown" class="hidden absolute left-0 top-8 min-w-[120px] bg-white dark:bg-gray-800 shadow rounded z-50"></div>
+        </div>
+        <a href="#" id="allShopBtn" class="nav-btn dynamic-shop">All Shop</a>
+      </nav>
+      <div class="flex-1 flex justify-center">
+        <input id="searchInput" type="text" placeholder="🔍 Search products, brands, categories..."
+          class="w-full md:w-[380px] px-5 py-2 rounded-full border border-gray-300 focus:outline-pink-400 text-gray-800 shadow"
+          oninput="applyFilters()" aria-label="Search products">
+      </div>
+      <div class="flex items-center gap-4">
+        <button id="loginBtn" onclick="handleLoginProfile()" class="profile-btn">
+          <i data-feather="user"></i> <span id="loginText">Login</span>
+        </button>
+        <button title="Wishlist" aria-label="Wishlist" onclick="alert('Wishlist coming soon!')" class="relative hover:text-pink-500">
+          <i data-feather="heart"></i>
+          <span class="absolute -top-2 -right-2 bg-pink-500 text-white text-xs rounded-full px-1" id="wishlistCount">0</span>
+        </button>
+        <button title="Compare" aria-label="Compare" onclick="alert('Compare coming soon!')" class="hover:text-blue-500">
+          <i data-feather="git-compare"></i>
+        </button>
+        <button title="Cart" aria-label="Cart" onclick="openCart()" class="relative hover:text-blue-500">
+          <i data-feather="shopping-cart"></i>
+          <span class="absolute -top-2 -right-2 bg-blue-500 text-white text-xs rounded-full px-1" id="cartCount">0</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- HERO BANNER -->
+  <section class="container mx-auto px-4 mt-4 mb-10">
+    <div class="relative rounded-2xl overflow-hidden shadow-xl bg-gradient-to-r from-pink-400 via-blue-400 to-red-400 min-h-[220px] flex flex-col justify-center items-center text-center">
+      <h2 class="text-3xl md:text-4xl font-extrabold text-white mt-8">Shop Everyday Essentials &amp; More!</h2>
+      <p class="text-lg text-white/90 mt-3 mb-6">Best prices. Fast delivery. 100% genuine brands.</p>
+      <img src="https://assets-global.website-files.com/642e4f9bffb3d376d0b21f9b/64350d4c8d6b2b5b2e58087d_hero-grocery.png" alt="Groceries Hero Banner" class="w-80 absolute right-2 bottom-0 hidden md:block pointer-events-none" draggable="false" />
+    </div>
+  </section>
+
+  <!-- CATEGORY TRAMLINES -->
+  <main class="container mx-auto px-4">
+    <div id="categoriesContainer"></div>
+  </main>
+
+  
+  <!-- CART DRAWER -->
+  <div id="cartDrawer" class="fixed inset-0 z-50 bg-black/40 flex items-end justify-end hidden" onclick="closeCart(event)">
+    <div class="bg-white dark:bg-gray-800 w-full max-w-md h-[82vh] p-6 rounded-t-2xl shadow-2xl overflow-y-auto" onclick="event.stopPropagation()">
+      <h3 class="text-xl font-extrabold mb-4 text-blue-700 dark:text-blue-200 flex items-center gap-2">
+        <i data-feather="shopping-cart"></i> Your Cart
+      </h3>
+      <div id="cartItems"></div>
+      <div class="mt-4 flex justify-between items-center">
+        <span class="font-bold text-lg">Total: ₹<span id="cartTotal">0</span></span>
+        <button class="bg-pink-500 hover:bg-pink-600 text-white px-5 py-2 rounded-full font-semibold text-lg" onclick="showCheckoutModal()">Checkout</button>
+      </div>
+      <button class="absolute top-4 right-6 text-gray-400 hover:text-pink-500" onclick="closeCart(event)" aria-label="Close cart">
+        <i data-feather="x"></i>
+      </button>
+    </div>
+  </div>
+
+<!-- WISHLIST MODAL -->
+<div id="wishlistModal" class="modal hidden">
+  <div class="modal-content colorful-profile">
+    <button onclick="document.getElementById('wishlistModal').classList.add('hidden')" class="close-btn">✖</button>
+    <h2>My Wishlist</h2>
+    <div id="wishlistItems" class="space-y-4 mt-4 text-sm text-gray-800"></div>
+  </div>
+</div>
+
+
+  <!-- CHECKOUT MODAL -->
+  <div id="checkoutModal" class="modal hidden">
+    <div class="modal-content checkout-square">
+     <button onclick="document.getElementById('checkoutModal').classList.add('hidden')" 
+            class="absolute top-3 right-3 text-gray-500 hover:text-black text-xl font-bold focus:outline-none">✖</button>
+
+      <h2 style="font-weight:bold;color:#111;">Complete Your Order</h2>
+      <form id="checkoutForm" autocomplete="off">
+        <div class="address-grid">
+          <div class="form-group">
+            <label for="buyer_name">Name</label>
+            <input type="text" name="buyer_name" id="buyer_name" required placeholder="Enter your name" />
+          </div>
+          <div class="form-group">
+            <label for="buyer_phone">Phone</label>
+            <input type="text" name="buyer_phone" id="buyer_phone" maxlength="14" required placeholder="Enter your phone" />
+          </div>
+          <div class="form-group">
+            <label for="buyer_address">Address</label>
+            <input type="text" name="buyer_address" id="buyer_address" required placeholder="Enter address" />
+          </div>
+          <div class="form-group">
+            <label for="buyer_pincode">Pincode</label>
+            <input type="text" name="buyer_pincode" id="buyer_pincode" maxlength="6" pattern="[0-9]{6}" required placeholder="6-digit pincode" oninput="fetchCityState(event)" />
+          </div>
+          <div class="form-group">
+            <label for="buyer_city">City</label>
+            <input type="text" name="buyer_city" id="buyer_city" readonly required placeholder="City" />
+          </div>
+          <div class="form-group">
+            <label for="buyer_state">State</label>
+            <input type="text" name="buyer_state" id="buyer_state" readonly required placeholder="State" />
+          </div>
+        
+         <div class="form-group">
+           <label for="coupon_code">Coupon Code</label>
+           <input type="text" name="coupon_code" id="coupon_code" placeholder="Enter code (optional)" />
+         </div>
+
+         <div class="form-group">
+           <label for="bonus">Bonus / Wallet Amount</label>
+           <input type="number" name="bonus" id="bonus" value="0" min="0" step="1" />
+         </div>
+
+        </div>
+        <div class="flex gap-2 mt-4">
+          <button type="button" class="flex-1 bg-blue-500 text-white py-2 rounded font-bold" style="font-size:1.1em;" onclick="checkout('prepaid')">Pay Online</button>
+          <button type="button" class="flex-1 bg-yellow-400 text-black py-2 rounded font-bold" style="font-size:1.1em;" onclick="checkout('cod')">Cash on Delivery</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- LOGIN MODAL -->
+  <div id="loginModal" class="modal hidden">
+  <div class="modal-content modal-gradient">
+    <button type="button" class="close-btn" onclick="closeLoginModal()" aria-label="Close login" title="Close">✖</button>
+    <h2 class="modal-title">Sign In</h2>
+    <form id="loginForm" autocomplete="on">
+      <input type="email" name="email" placeholder="Email address" required autocomplete="username" />
+      <input type="password" name="password" placeholder="Password" required autocomplete="current-password" />
+      <button type="submit" class="btn-primary">Sign In</button>
+    </form>
+    <p id="loginError" class="error"></p>
+    <div class="modal-links">
+      <a href="#" onclick="openResetModal();closeLoginModal()">Forgot password?</a>
+      <span>·</span>
+      <a href="#" onclick="openSignupModal();closeLoginModal()">Create an account</a>
+    </div>
+  </div>
+</div>
+
+  <!-- SIGNUP MODAL -->
+  <div id="signupModal" class="modal hidden">
+  <div class="modal-content modal-gradient">
+    <button type="button" class="close-btn" onclick="closeSignupModal()" aria-label="Close signup" title="Close">✖</button>
+    <h2 class="modal-title">Create Account</h2>
+    <form id="signupForm" autocomplete="on">
+      <input type="text" name="name" placeholder="Your name" required autocomplete="name" />
+      <input type="email" name="email" placeholder="Email address" required autocomplete="email" />
+      <input type="password" name="password" placeholder="Create password" required autocomplete="new-password" />
+      <input type="text" name="phone" placeholder="Phone number" required autocomplete="tel" />
+      <input type="text" name="address" placeholder="Address" required autocomplete="street-address" />
+      <button type="submit" class="btn-primary">Sign Up</button>
+    </form>
+    <p id="signupMsg"></p>
+    <div class="modal-links">
+      <a href="#" onclick="closeSignupModal();openLoginModal()">Already have an account? Sign in</a>
+    </div>
+  </div>
+</div>
+
+   <!-- VERIFY EMAIL MODAL -->
+   <div id="verifyModal" class="modal hidden">
+  <div class="modal-content modal-gradient">
+    <button type="button" class="close-btn" onclick="closeVerifyModal()" aria-label="Close verify" title="Close">✖</button>
+    <h2 class="modal-title">Verify Your Email</h2>
+    <div class="modal-verify-text">
+      <i data-feather="mail" style="color:#ffd600;width:54px;height:54px"></i>
+      <p>We’ve sent a verification link to your email address.<br>
+      Please check your inbox and click the link to verify your account.</p>
+    </div>
+    <button type="button" class="btn-secondary" onclick="closeVerifyModal()">Close</button>
+  </div>
+</div>
+   
+   
+   <!-- RESET PASSWORD MODAL -->
+  <div id="resetModal" class="modal hidden">
+    <div class="modal-content modal-gradient">
+    <button type="button" class="close-btn" onclick="closeResetModal()" aria-label="Close reset" title="Close">✖</button>
+    <h2 class="modal-title">Reset Password</h2>
+    <form id="resetForm" autocomplete="on">
+      <input type="email" name="email" placeholder="Enter your registered email" required autocomplete="username" />
+      <button type="submit" class="btn-primary">Send Reset Link</button>
+    </form>
+    <p id="resetMsg"></p>
+    <div class="modal-links">
+      <a href="#" onclick="closeResetModal();openLoginModal()">Back to Sign In</a>
+    </div>
+  </div>
+</div>
+     
+ 
+
+  <!-- PROFILE MODAL -->
+  <div id="profileModal" class="modal hidden">
+    <div class="modal-content colorful-profile overflow-y-auto max-h-[90vh] p-6">
+     <button onclick="closeProfileModal()" class="close-btn">✖</button>
+      <h2>My Profile</h2>
+      <form id="profileForm">
+        <div class="profile-photo-preview">
+          <img id="profilePhoto" src="https://placehold.co/80x80?text=Photo" alt="Profile Photo">
+          <input type="file" id="photoInput" accept="image/*" title="Select profile photo">
+        </div>
+        <input type="text" name="name" placeholder="Name" required />
+        <input type="email" name="email" placeholder="Email" required />
+        <input type="text" name="altphone" placeholder="Alternate phone" required />
+        <input type="text" name="phone" placeholder="Phone" required />
+        <input type="text" name="address" placeholder="Address" required />
+        <button type="submit">Update Profile</button>
+      </form>
+      <p id="profileMsg"></p>
+      <div id="orderHistorySection">
+        <h3 style="margin:20px 0 8px;">Order History</h3>
+        <div id="orderHistory"></div>
+      </div>
+      <button onclick="logout()" class="logout-btn">Logout</button>
+    </div>
+  </div>
+
+  <!-- ADMIN DASHBOARD MODAL -->
+  <div id="adminDashboardModal" class="modal hidden">
+    <div class="modal-content">
+    <button onclick="closeAdminDashboard()" class="close-btn">✖</button>
+      <h2 style="color:#2563eb">Admin Dashboard</h2>
+      <nav>
+        <button onclick="showAdminTab('orders')">Orders</button>
+        <button onclick="showAdminTab('products')">Products</button>
+        <button onclick="showAdminTab('users')">Users</button>
+      </nav>
+      <div id="adminTabContent"></div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="mt-16 pt-14 pb-8 animated-footer text-white shadow-inner relative">
+    <div class="container mx-auto px-4 flex flex-col md:flex-row justify-between items-center">
+      <div>
+        <!-- Brand Info -->
+    <div>
+      <h2 class="text-3xl font-bold mb-2">DAILY2KART</h2>
+      <p class="text-sm text-gray-400">Your trusted local store - 2025</p>
+      <p class="text-xs text-gray-500 mt-4">Made with ❤️ by DAILY2KART</p>
+    </div>
+        <div class="text-sm mt-1">Your trusted local store - 2025</div>
+      </div>
+      <div class="flex gap-6 mt-3 md:mt-0">
+        <a href="#" class="hover:underline">Home</a>
+        <a href="#" class="hover:underline">Shop</a>
+        <a href="#" class="hover:underline">Offers</a>
+        <a href="#" class="hover:underline">Contact</a>
+      </div>
+     
+      <!-- Bottom Line -->
+  <div class="mt-6 text-center text-xs text-gray-500">
+    © 2025 DAILY2KART. All rights reserved.
+    </div>
+  </footer>
+
+<!-- Floating Back to Top Button -->
+<button id="backToTopBtn"
+  onclick="window.scrollTo({ top: 0, behavior: 'smooth' })"
+  title="Back to top"
+  class="fixed bottom-6 right-6 z-50 bg-pink-500 text-white p-3 rounded-full shadow-lg hover:bg-pink-600 hidden transition-all duration-300 dark:bg-blue-700 dark:hover:bg-blue-800 w-fit">
+  <i data-feather="arrow-up"></i>
+</button>
+
+
+<!-- Floating Quick Actions -->
+<div class="fixed bottom-6 left-6 z-50 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full shadow-lg flex gap-2 items-center justify-center px-3 py-2 w-fit">
+
+<!-- Dark Mode Toggle -->
+<button id="toggleDark"
+  onclick="toggleDarkMode()"
+  title="Toggle Light/Dark"
+  class="text-gray-800 dark:text-white p-2 hover:scale-110 transition">
+  <i data-feather="moon"></i>
+</button>
+
+  <button title="Cart" onclick="openCart()" class="text-blue-600 dark:text-blue-300 p-2 hover:scale-110 transition">
+    <i data-feather="shopping-cart"></i>
+  </button>
+  <button title="Wishlist" onclick="alert('Wishlist coming soon!')" class="text-pink-500 p-2 hover:scale-110 transition">
+    <i data-feather="heart"></i>
+  </button>
+</div>
+<div id="toast-container" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-[9999] space-y-2"></div>
+
+<!-- === PRODUCT EDITOR MODAL === -->
+<div id="productEditorModal" class="modal hidden">
+  <div class="modal-content colorful-profile max-w-md mx-auto">
+    <button onclick="closeProductEditor()" class="close-btn float-right text-xl">✖</button>
+    <h2 class="text-xl font-bold mb-4">Edit Product</h2>
+    <form id="productEditForm" onsubmit="saveProductChanges(event)" class="space-y-3">
+      <input type="hidden" name="id" />
+      <input type="text" name="name" placeholder="Product Name" required class="input" />
+      <input type="text" name="category" placeholder="Category" required class="input" />
+      <input type="text" name="brandname" placeholder="Brand" class="input" />
+      <input type="number" step="0.01" name="price" placeholder="Price" required class="input" />
+      <input type="number" step="0.01" name="mrp" placeholder="MRP" class="input" />
+      <input type="text" name="itemsize" placeholder="Item Size" class="input" />
+      <input type="url" name="image_url" placeholder="Image URL" class="input" />
+      <button type="submit" class="btn-primary w-full mt-3">💾 Save Changes</button>
+    </form>
+  </div>
+</div>
+
+<script src="app.js?v=9"></script>
 </body>
 </html>

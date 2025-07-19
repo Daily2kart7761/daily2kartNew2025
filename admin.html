@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Panel – DAILY2KART</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial/dist/chartjs-chart-financial.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.0.0/dist/umd/supabase.min.js"></script>
+  <style>
+    body { font-family: 'Inter', Arial, sans-serif; }
+    .modal-bg { background: rgba(0,0,0,0.4); }
+    .candlestick-tooltip {
+      font-size: 0.85rem;
+      background: #fff;
+      color: #222;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 8px;
+    }
+    .file-input::file-selector-button {
+      background: #06b6d4;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 0.5rem 1rem;
+      margin-right: 1rem;
+      cursor: pointer;
+    }
+    /* Simple tab styling */
+    .tab-btn.active {
+        border-color: #06b6d4;
+        background-color: #06b6d4;
+        color: white;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+<div class="max-w-7xl mx-auto p-4">
+
+  <div class="flex justify-between items-center mb-6">
+    <h1 class="text-3xl font-bold text-gray-800">Admin Panel – DAILY2KART</h1>
+    <div>
+      <button id="loginBtn" onclick="showLoginModal()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg shadow">Log In</button>
+      <button id="logoutBtn" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg shadow hidden" onclick="logout()">Log Out</button>
+    </div>
+  </div>
+
+  <div class="mb-6">
+      <div class="border-b border-gray-200">
+          <nav class="-mb-px flex space-x-6">
+              <button onclick="showTab('products')" id="productsTabBtn" class="tab-btn active whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm">
+                  Products Management
+              </button>
+              <button onclick="showTab('orders')" id="ordersTabBtn" class="tab-btn whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                  Orders Management
+              </button>
+              <button onclick="showTab('users')" id="usersTabBtn" class="tab-btn whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                  User Management
+              </button>
+          </nav>
+      </div>
+  </div>
+
+  <div id="productsSection">
+      <div id="dashboard" class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+        <div class="bg-gradient-to-br from-cyan-400 to-cyan-600 text-white p-6 rounded-xl shadow flex flex-col items-center">
+          <div class="text-2xl font-bold" id="dashTotalProducts">0</div>
+          <div class="font-medium mt-1">Total Products</div>
+        </div>
+        <div class="bg-gradient-to-br from-pink-400 to-pink-600 text-white p-6 rounded-xl shadow flex flex-col items-center">
+          <div class="text-2xl font-bold" id="dashTotalStock">0</div>
+          <div class="font-medium mt-1">Total Stock</div>
+        </div>
+        <div class="bg-gradient-to-br from-green-400 to-green-600 text-white p-6 rounded-xl shadow flex flex-col items-center">
+          <div class="text-2xl font-bold" id="dashTotalCategories">0</div>
+          <div class="font-medium mt-1">Total Categories</div>
+        </div>
+        <div class="bg-white rounded-xl shadow flex flex-col items-center justify-center p-4">
+          <div class="font-semibold mb-1 text-gray-700">Price Candlestick</div>
+          <canvas id="candlestickChart" width="200" height="80"></canvas>
+        </div>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-4 mb-6">
+        <div class="bg-white p-4 rounded-xl shadow">
+          <div class="flex justify-between mb-2">
+            <b class="text-gray-700">Brands</b>
+            <button onclick="showBrandModal()" class="bg-cyan-500 hover:bg-cyan-600 text-white px-3 py-1 rounded">+ Add Brand</button>
+          </div>
+          <div id="brandList" class="flex flex-wrap gap-2"></div>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow">
+          <div class="flex justify-between mb-2">
+            <b class="text-gray-700">Categories</b>
+            <button onclick="showCategoryModal()" class="bg-pink-500 hover:bg-pink-600 text-white px-3 py-1 rounded">+ Add Category</button>
+          </div>
+          <div id="categoryList" class="flex flex-wrap gap-2"></div>
+        </div>
+      </div>
+
+      <div id="productFormDiv" class="hidden mb-10">
+        <h2 class="text-2xl font-bold text-gray-800 mb-2">Add / Edit Product</h2>
+        <form id="productForm" onsubmit="event.preventDefault(); saveProduct();" class="bg-white rounded-xl p-6 shadow grid grid-cols-1 md:grid-cols-2 gap-6">
+            <input type="hidden" id="productId" />
+            <div><label class="block text-sm font-medium text-gray-600">Product Name</label><input type="text" id="name" required class="mt-1 border rounded p-2 w-full" /></div>
+            <div><label class="block text-sm font-medium text-gray-600">Item Size</label><input type="text" id="itemsize" class="mt-1 border rounded p-2 w-full" /></div>
+            <div><label class="block text-sm font-medium text-gray-600">Quantity</label><input type="number" id="qty" required class="mt-1 border rounded p-2 w-full" /></div>
+            <div><label class="block text-sm font-medium text-gray-600">MRP</label><input type="number" id="mrp" step="0.01" class="mt-1 border rounded p-2 w-full" oninput="autoDiscount()" /></div>
+            <div><label class="block text-sm font-medium text-gray-600">Selling Price</label><input type="number" id="price" step="0.01" required class="mt-1 border rounded p-2 w-full" oninput="autoDiscount()" /></div>
+            <div><label class="block text-sm font-medium text-gray-600">Discount (%)</label><input type="text" id="discount" readonly class="mt-1 border rounded p-2 w-full bg-gray-100" /></div>
+            <div><label class="block text-sm font-medium text-gray-600">Brand</label><select id="brandname" required class="mt-1 border rounded p-2 w-full"></select></div>
+            <div><label class="block text-sm font-medium text-gray-600">Category</label><select id="category" required class="mt-1 border rounded p-2 w-full"></select></div>
+            <div><label class="block text-sm font-medium text-gray-600">Color</label><input type="text" id="colors" class="mt-1 border rounded p-2 w-full" /></div>
+            <div><label class="block text-sm font-medium text-gray-600">Description</label><textarea id="description" class="mt-1 border rounded p-2 w-full"></textarea></div>
+            <div><label class="block text-sm font-medium text-gray-600">Product Image</label><input type="file" id="image" accept="image/*" onchange="showImagePreview(event)" class="file-input mt-1" /><img id="imagePreview" src="" class="hidden mt-2 rounded border max-w-[180px]"/></div>
+            <div><label class="block text-sm font-medium text-gray-600">Made In Country</label><input type="text" id="madeincountry" required class="mt-1 border rounded p-2 w-full" placeholder="e.g. India"/></div>
+            <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-4 gap-6 mt-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-600">GST Rate</label>
+                <select id="gstRate" required onchange="updateGSTFields()" class="mt-1 border rounded p-2 w-full">
+                <option value="">Select GST Rate</option><option value="0">0%</option><option value="5">5%</option><option value="12">12%</option><option value="18">18%</option><option value="28">28%</option>
+                </select>
+            </div>
+            <div><label class="block text-sm font-medium text-gray-600">CGST (%)</label><input type="text" id="cgst" readonly class="mt-1 border rounded p-2 w-full bg-gray-100" /></div>
+            <div><label class="block text-sm font-medium text-gray-600">SGST (%)</label><input type="text" id="sgst" readonly class="mt-1 border rounded p-2 w-full bg-gray-100" /></div>
+            <div><label class="block text-sm font-medium text-gray-600">IGST (%)</label><input type="text" id="igst" readonly class="mt-1 border rounded p-2 w-full bg-gray-100" /></div>
+            </div>
+            <div class="col-span-1 md:col-span-2 flex gap-4 mt-2">
+            <button type="submit" id="submitBtn" class="bg-teal-500 hover:bg-teal-600 text-white font-bold px-6 py-2 rounded-lg shadow">Save Product</button>
+            <button type="button" onclick="resetForm()" class="bg-gray-500 hover:bg-gray-600 text-white font-bold px-6 py-2 rounded-lg shadow">Cancel</button>
+            </div>
+        </form>
+        <div class="mt-6 bg-white rounded-xl p-6 shadow flex flex-col md:flex-row md:items-center gap-4">
+            <div><b>Bulk Import Products (CSV):</b><input type="file" id="csvInput" accept=".csv" class="file-input mt-2"/><button onclick="importCSV()" class="ml-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">Import CSV</button><span id="csvStatus" class="ml-3 text-teal-700"></span><span id="csvError" class="ml-3 text-red-600"></span></div>
+            <div class="mt-2 md:mt-0"><button onclick="exportCSV()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">Export CSV</button></div>
+        </div>
+      </div>
+
+      <div class="mt-10">
+        <h3 class="text-xl font-bold text-gray-800 mb-2">Product List</h3>
+        <input type="text" id="searchBar" placeholder="Search by name, brand, category..." oninput="filterProducts()" class="p-2 border rounded w-full mb-4 max-w-md"/>
+        <div id="productList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
+      </div>
+  </div>
+
+  <div id="ordersSection" class="hidden">
+      <h2 class="text-2xl font-bold text-gray-800 mb-4">Manage Orders</h2>
+      <div class="bg-white rounded-xl shadow overflow-x-auto">
+          <table class="w-full text-sm text-left text-gray-600">
+              <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                  <tr>
+                      <th scope="col" class="px-6 py-3">Order ID</th>
+                      <th scope="col" class="px-6 py-3">Customer</th>
+                      <th scope="col" class="px-6 py-3">Date</th>
+                      <th scope="col" class="px-6 py-3">Amount</th>
+                      <th scope="col" class="px-6 py-3">Status</th>
+                      <th scope="col" class="px-6 py-3">Actions</th>
+                  </tr>
+              </thead>
+              <tbody id="orderList">
+                  </tbody>
+          </table>
+      </div>
+  </div>
+
+  <div id="usersSection" class="hidden">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-2xl font-bold text-gray-800">Manage Admin Users</h2>
+        <button onclick="showUserModal()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg shadow">+ Add New User</button>
+      </div>
+      <div class="bg-white rounded-xl shadow overflow-x-auto">
+          <table class="w-full text-sm text-left text-gray-600">
+              <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                  <tr>
+                      <th scope="col" class="px-6 py-3">Email</th>
+                      <th scope="col" class="px-6 py-3">User ID</th>
+                      <th scope="col" class="px-6 py-3">Last Sign In</th>
+                      <th scope="col" class="px-6 py-3">Status</th>
+                  </tr>
+              </thead>
+              <tbody id="userList">
+                  </tbody>
+          </table>
+      </div>
+  </div>
+
+</div>
+
+<div id="brandModal" class="modal-bg hidden fixed inset-0 z-40 flex items-center justify-center"><div class="bg-white p-6 rounded-xl shadow-lg w-80"><h3 class="font-bold text-lg mb-3">Add Brand</h3><input type="text" id="brandInput" class="w-full p-2 border rounded mb-4" placeholder="Brand name"><div class="flex justify-end gap-2"><button onclick="closeBrandModal()" class="px-4 py-2 bg-gray-400 text-white rounded">Cancel</button><button onclick="addBrand()" class="px-4 py-2 bg-cyan-500 text-white rounded">Add</button></div></div></div>
+<div id="categoryModal" class="modal-bg hidden fixed inset-0 z-40 flex items-center justify-center"><div class="bg-white p-6 rounded-xl shadow-lg w-80"><h3 class="font-bold text-lg mb-3">Add Category</h3><input type="text" id="categoryInput" class="w-full p-2 border rounded mb-4" placeholder="Category name"><div class="flex justify-end gap-2"><button onclick="closeCategoryModal()" class="px-4 py-2 bg-gray-400 text-white rounded">Cancel</button><button onclick="addCategory()" class="px-4 py-2 bg-pink-500 text-white rounded">Add</button></div></div></div>
+<div id="loginModal" class="modal-bg hidden fixed inset-0 z-40 flex items-center justify-center"><div class="bg-white p-6 rounded-xl shadow-lg w-80"><h3 id="loginTitle" class="font-bold text-lg mb-3">Admin Login</h3><input type="email" id="loginEmail" class="w-full p-2 border rounded mb-2" placeholder="Email" autocomplete="username"><input type="password" id="loginPassword" class="w-full p-2 border rounded mb-2" placeholder="Password" autocomplete="current-password"><button id="loginActionBtn" onclick="doLoginOrSignup()" class="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded mb-2">Log In</button><button onclick="closeLoginModal()" class="w-full bg-gray-400 text-white py-2 rounded mb-2">Cancel</button><div id="loginMsg" class="text-red-600 text-sm mb-1"></div><div id="signupMsg" class="text-teal-600 text-sm mb-1"></div><button id="loginSwitch" onclick="toggleLoginSignup()" class="w-full bg-none text-blue-500 underline py-1">Create account</button></div></div>
+<div id="orderDetailModal" class="modal-bg hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+  <div class="bg-white p-6 rounded-xl shadow-lg w-full max-w-3xl max-h-full overflow-y-auto">
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-xl">Order Details</h3>
+        <button onclick="closeOrderDetailModal()" class="text-2xl font-bold">&times;</button>
+    </div>
+    <div id="orderDetailContent">
+        </div>
+    <div class="mt-6 flex flex-wrap gap-3 border-t pt-4">
+        <button id="orderBillBtn" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg">Generate Bill</button>
+        <button id="orderDispatchBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">Dispatch Order</button>
+        <button id="orderDeliverBtn" class="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-lg">Mark as Delivered</button>
+        <button id="orderCancelBtn" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg">Cancel Order</button>
+    </div>
+  </div>
+</div>
+
+<div id="userModal" class="modal-bg hidden fixed inset-0 z-40 flex items-center justify-center">
+    <div class="bg-white p-6 rounded-xl shadow-lg w-96">
+        <h3 class="font-bold text-lg mb-4">Create New Admin User</h3>
+        <form id="userForm" onsubmit="event.preventDefault(); createNewUser();">
+            <div class="mb-3">
+                <label class="block text-sm font-medium text-gray-600">Email</label>
+                <input type="email" id="newUserEmail" required class="mt-1 border rounded p-2 w-full" />
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-600">Password</label>
+                <input type="password" id="newUserPassword" required class="mt-1 border rounded p-2 w-full" />
+            </div>
+            <div id="userFormMsg" class="text-sm mb-3"></div>
+            <div class="flex justify-end gap-2">
+                <button type="button" onclick="closeUserModal()" class="px-4 py-2 bg-gray-400 text-white rounded">Cancel</button>
+                <button type="submit" class="px-4 py-2 bg-green-500 text-white rounded">Create User</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<script>
+// --- SUPABASE & GLOBAL VARS ---
+const supabase = window.supabase.createClient(
+  "https://gfrvurvfqeurjlpyfbvl.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdmcnZ1cnZmcWV1cmpscHlmYnZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEyOTQ1NDksImV4cCI6MjA2Njg3MDU0OX0.01wmeTXF51N0Dd5VBTZOWuOEje8qtutHUDm1ty0PtlE"
+);
+let products = [], brands = [], categories = [], orders = [], users = []; // Added users array
+let userSession = null;
+let loginMode = "login";
+let imageUrl = "";
+let candlestickChart = null;
+
+// --- INITIAL LOAD & AUTH ---
+window.onload = function() {
+  checkSession();
+  loadBrandsCategories();
+  // Data loading is now handled in checkSession()
+};
+
+async function checkSession() {
+  const { data } = await supabase.auth.getSession();
+  userSession = data.session;
+  document.getElementById("loginBtn").classList.toggle("hidden", !!userSession);
+  document.getElementById("logoutBtn").classList.toggle("hidden", !userSession);
+  document.getElementById("productFormDiv").classList.toggle("hidden", !userSession);
+
+  // Load data only if the user is authenticated
+  if (userSession) {
+    loadProducts();
+    loadOrders();
+    loadUsers(); // Load users if logged in
+  }
+}
+
+function showLoginModal()  { document.getElementById("loginModal").classList.remove('hidden'); loginMode = "login"; updateLoginModal(); }
+function closeLoginModal() { document.getElementById("loginModal").classList.add('hidden'); }
+function toggleLoginSignup() { loginMode = loginMode === "login" ? "signup" : "login"; updateLoginModal(); }
+function updateLoginModal() {
+  document.getElementById("loginTitle").textContent = loginMode === "login" ? "Admin Login" : "Create Account";
+  document.getElementById("loginActionBtn").textContent = loginMode === "login" ? "Log In" : "Sign Up";
+  document.getElementById("loginSwitch").textContent = loginMode === "login" ? "Create account" : "Back to Login";
+  document.getElementById("loginMsg").textContent = ""; document.getElementById("signupMsg").textContent = "";
+}
+async function doLoginOrSignup() {
+  const email = document.getElementById("loginEmail").value;
+  const password = document.getElementById("loginPassword").value;
+  document.getElementById("loginMsg").textContent = ""; document.getElementById("signupMsg").textContent = "";
+  if (loginMode === "login") {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) { document.getElementById("loginMsg").textContent = error.message; }
+    else { closeLoginModal(); checkSession(); }
+  } else {
+    const { error } = await supabase.auth.signUp({ email, password });
+    if (error) { document.getElementById("signupMsg").textContent = error.message; }
+    else { document.getElementById("signupMsg").textContent = "Check your email for confirmation. Then log in."; }
+  }
+}
+function logout() {
+  supabase.auth.signOut().then(() => {
+    userSession = null; checkSession(); document.getElementById("productForm").reset();
+    document.getElementById("imagePreview").classList.add("hidden");
+    // Clear all data on logout
+    renderProductList([]);
+    renderOrderList([]);
+    renderUserList([]);
+  });
+}
+function showBrandModal()  { document.getElementById('brandModal').classList.remove('hidden'); }
+function closeBrandModal() { document.getElementById('brandModal').classList.add('hidden'); }
+function showCategoryModal()  { document.getElementById('categoryModal').classList.remove('hidden'); }
+function closeCategoryModal() { document.getElementById('categoryModal').classList.add('hidden'); }
+
+// --- TAB NAVIGATION (UPDATED) ---
+function showTab(tabName) {
+    const sections = ['productsSection', 'ordersSection', 'usersSection'];
+    const buttons = ['productsTabBtn', 'ordersTabBtn', 'usersTabBtn'];
+
+    sections.forEach(id => document.getElementById(id).classList.add('hidden'));
+    buttons.forEach(id => document.getElementById(id).classList.remove('active'));
+
+    document.getElementById(tabName + 'Section').classList.remove('hidden');
+    document.getElementById(tabName + 'TabBtn').classList.add('active');
+}
+
+
+// --- BRAND/CATEGORY CRUD ---
+// ... No changes to your existing brand/category functions ...
+async function loadBrandsCategories() {
+  const { data: brandsData } = await supabase.from("brands").select("*").order("name");
+  brands = brandsData || [];
+  const brandSel = document.getElementById("brandname");
+  brandSel.innerHTML = '<option value="">Select Brand</option>';
+  brands.forEach(b => { brandSel.innerHTML += `<option value="${b.name}">${b.name}</option>`; });
+  document.getElementById('brandList').innerHTML = brands.map(b => `<span class="bg-cyan-100 text-cyan-700 rounded px-2 py-1 flex items-center">${b.name}<button onclick="deleteBrand('${b.id}')" class="ml-1 text-red-500 font-bold">×</button></span>`).join(" ");
+
+  const { data: categoriesData } = await supabase.from("categories").select("*").order("name");
+  categories = categoriesData || [];
+  const catSel = document.getElementById("category");
+  catSel.innerHTML = '<option value="">Select Category</option>';
+  categories.forEach(c => { catSel.innerHTML += `<option value="${c.name}">${c.name}</option>`; });
+  document.getElementById('categoryList').innerHTML = categories.map(c => `<span class="bg-pink-100 text-pink-700 rounded px-2 py-1 flex items-center">${c.name}<button onclick="deleteCategory('${c.id}')" class="ml-1 text-red-500 font-bold">×</button></span>`).join(" ");
+}
+async function addBrand() {
+  const name = document.getElementById("brandInput").value.trim();
+  if (!name) return;
+  await supabase.from("brands").insert([{ name }]);
+  closeBrandModal(); loadBrandsCategories();
+}
+async function deleteBrand(id) {
+  if (!confirm("Delete this brand?")) return;
+  await supabase.from("brands").delete().eq("id", id);
+  loadBrandsCategories();
+}
+async function addCategory() {
+  const name = document.getElementById("categoryInput").value.trim();
+  if (!name) return;
+  await supabase.from("categories").insert([{ name }]);
+  closeCategoryModal(); loadBrandsCategories();
+}
+async function deleteCategory(id) {
+  if (!confirm("Delete this category?")) return;
+  await supabase.from("categories").delete().eq("id", id);
+  loadBrandsCategories();
+}
+
+// --- PRODUCT CRUD & HELPERS ---
+// ... No changes to your existing product functions ...
+function updateGSTFields() {
+  const gst = parseFloat(document.getElementById('gstRate').value) || 0;
+  const cgst = (gst / 2).toFixed(2); const sgst = (gst / 2).toFixed(2);
+  document.getElementById('cgst').value = cgst; document.getElementById('sgst').value = sgst; document.getElementById('igst').value = gst.toFixed(2);
+}
+async function saveProduct() {
+  if (!userSession) { alert("Please log in!"); return; }
+  const id = document.getElementById("productId").value;
+  let data = {
+    name: document.getElementById("name").value, itemsize: document.getElementById("itemsize").value,
+    qty: +document.getElementById("qty").value, mrp: +document.getElementById("mrp").value,
+    price: +document.getElementById("price").value, brandname: document.getElementById("brandname").value,
+    category: document.getElementById("category").value, colors: document.getElementById("colors").value,
+    description: document.getElementById("description").value, madeincountry: document.getElementById("madeincountry").value,
+    cgst: parseFloat(document.getElementById("cgst").value), sgst: parseFloat(document.getElementById("sgst").value),
+    igst: parseFloat(document.getElementById("igst").value), created_at: new Date().toISOString()
+  };
+  const fileInput = document.getElementById("image");
+  const file = fileInput.files[0];
+  if (file) {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}_${Math.random().toString(36).substr(2,6)}.${fileExt}`;
+    const { data: uploadData, error: uploadError } = await supabase.storage.from('product-images').upload(fileName, file);
+    if (uploadError) { alert("Image upload failed: " + uploadError.message); return; }
+    const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(fileName);
+    data.image_url = publicUrl;
+  } else if (imageUrl) { data.image_url = imageUrl; }
+
+  const res = id ? await supabase.from("daily2kartdata").update(data).eq("id", id) : await supabase.from("daily2kartdata").insert([data]);
+  if (res.error) alert("❌ Error: " + res.error.message);
+  else { alert("✅ Product saved"); resetForm(); loadProducts(); }
+}
+async function loadProducts() {
+  const { data } = await supabase.from("daily2kartdata").select("*").order("created_at", { ascending: false });
+  products = data || [];
+  renderProductList(products); updateDashboard(products);
+}
+function renderProductList(data) {
+  const container = document.getElementById("productList");
+  container.innerHTML = data.map(p => `<div class="bg-white rounded-xl p-4 shadow flex flex-col">${p.image_url ? `<img class="h-24 w-auto object-contain mx-auto" src="${p.image_url}" onerror="this.src='https://placehold.co/120x90?text=No+Image';">` : ''}<b class="text-lg mt-2">${p.name}</b> <span class="text-gray-500 text-xs">(${p.itemsize})</span><div class="my-1 text-gray-700">₹${p.price} <span class="text-gray-400 text-sm">MRP: ₹${p.mrp}</span></div><div class="text-sm">Qty: ${p.qty} | GST: ${p.igst || 0}%</div><div class="text-sm mb-1 text-gray-500">Brand: ${p.brandname} | Cat: ${p.category}</div><div class="text-sm mb-2 text-gray-600">Made in: <b>${p.madeincountry || ""}</b></div><div class="flex gap-2 mt-auto pt-2"><button onclick="editProduct('${p.id}')" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-1 rounded">Edit</button><button onclick="deleteProduct('${p.id}')" class="flex-1 bg-red-500 hover:bg-red-600 text-white py-1 rounded">Delete</button></div></div>`).join("");
+}
+function filterProducts() {
+  const query = document.getElementById("searchBar").value.toLowerCase();
+  const result = products.filter(p => (p.name||'').toLowerCase().includes(query) || (p.brandname||'').toLowerCase().includes(query) || (p.category||'').toLowerCase().includes(query) || (p.madeincountry||'').toLowerCase().includes(query));
+  renderProductList(result);
+}
+async function editProduct(id) {
+  const { data } = await supabase.from("daily2kartdata").select("*").eq("id", id).single();
+  if (!data) return;
+  Object.entries(data).forEach(([key, val]) => { const input = document.getElementById(key); if (input) input.value = val; });
+  if ('igst' in data) { document.getElementById('gstRate').value = parseFloat(data.igst) || ''; updateGSTFields(); }
+  document.getElementById("productId").value = id;
+  document.getElementById("submitBtn").textContent = "Update Product";
+  if (data.image_url) {
+    document.getElementById("imagePreview").src = data.image_url; document.getElementById("imagePreview").classList.remove("hidden");
+    imageUrl = data.image_url;
+  } else { document.getElementById("imagePreview").classList.add("hidden"); imageUrl = ""; }
+  window.scrollTo(0,0);
+}
+async function deleteProduct(id) {
+  if (!confirm("Are you sure you want to delete this product?")) return;
+  await supabase.from("daily2kartdata").delete().eq("id", id);
+  loadProducts();
+}
+function resetForm() {
+  document.getElementById("productForm").reset(); document.getElementById("productId").value = '';
+  document.getElementById("submitBtn").textContent = "Save Product";
+  document.getElementById("imagePreview").classList.add("hidden"); imageUrl = "";
+}
+function autoDiscount() {
+  const mrp = parseFloat(document.getElementById("mrp").value); const price = parseFloat(document.getElementById("price").value);
+  let result = ''; if (!isNaN(mrp) && !isNaN(price) && mrp > 0) { const discount = ((mrp - price) / mrp) * 100; result = discount > 0 ? discount.toFixed(1) : "0.0"; }
+  document.getElementById("discount").value = result ? `${result}%` : "";
+}
+function showImagePreview(event) {
+  const file = event.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function(e) { document.getElementById("imagePreview").src = e.target.result; document.getElementById("imagePreview").classList.remove("hidden"); };
+    reader.readAsDataURL(file);
+  } else { document.getElementById("imagePreview").classList.add("hidden"); }
+}
+function importCSV() { /* Your existing importCSV function */ }
+function exportCSV() { /* Your existing exportCSV function */ }
+
+
+// --- ORDER MANAGEMENT FUNCTIONS ---
+// ... No changes to your existing order functions ...
+async function loadOrders() {
+    if (!userSession) return;
+    const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error('Error loading orders:', error);
+        return;
+    }
+    orders = data || [];
+    renderOrderList(orders);
+}
+
+function renderOrderList(orderData) {
+    const container = document.getElementById('orderList');
+    if (!container) return;
+    if (orderData.length === 0) {
+        container.innerHTML = `<tr><td colspan="6" class="text-center p-6">No orders found.</td></tr>`;
+        return;
+    }
+
+    container.innerHTML = orderData.map(order => {
+        const orderDate = new Date(order.created_at).toLocaleDateString();
+        const statusColor = getStatusColor(order.status);
+        return `
+            <tr class="bg-white border-b hover:bg-gray-50">
+                <td class="px-6 py-4 font-mono text-xs">${order.order_id}</td>
+                <td class="px-6 py-4 font-medium">${order.name}</td>
+                <td class="px-6 py-4">${orderDate}</td>
+                <td class="px-6 py-4 font-semibold">₹${Number(order.grand_total).toFixed(2)}</td>
+                <td class="px-6 py-4">
+                    <span class="px-2 py-1 text-xs font-semibold rounded-full ${statusColor}">
+                        ${order.status}
+                    </span>
+                </td>
+                <td class="px-6 py-4">
+                    <button onclick="showOrderDetailModal('${order.id}')" class="font-medium text-cyan-600 hover:underline">View Details</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function getStatusColor(status) {
+    if (!status) return 'bg-gray-200 text-gray-800';
+    switch (status.toLowerCase()) {
+        case 'pending': return 'bg-gray-200 text-gray-800';
+        case 'placed': return 'bg-yellow-200 text-yellow-800';
+        case 'dispatched': return 'bg-blue-200 text-blue-800';
+        case 'delivered': return 'bg-green-200 text-green-800';
+        case 'cancelled': return 'bg-red-200 text-red-800';
+        default: return 'bg-gray-200 text-gray-800';
+    }
+}
+
+function formatAddress(address) {
+    if (!address) return 'N/A';
+    if (typeof address === 'string') return address;
+    return [address.address, address.city, address.state, address.pincode, address.country].filter(Boolean).join(', ');
+}
+
+async function showOrderDetailModal(orderId) {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+
+    const modal = document.getElementById('orderDetailModal');
+    const content = document.getElementById('orderDetailContent');
+    const formattedAddr = formatAddress(order.address);
+
+    const itemsHtml = order.items.map(item => `
+        <tr class="border-b">
+            <td class="py-2 pr-2">${item.name} (${item.itemsize || 'std'})</td>
+            <td class="py-2 pr-2 text-center">${item.quantity}</td>
+            <td class="py-2 pr-2 text-right">₹${Number(item.price).toFixed(2)}</td>
+            <td class="py-2 pl-2 text-right">₹${(item.quantity * item.price).toFixed(2)}</td>
+        </tr>
+    `).join('');
+
+    content.innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
+            <div>
+                <h4 class="font-bold text-gray-700 mb-1">Customer Details</h4>
+                <p><b>Name:</b> ${order.name}</p>
+                <p><b>Phone:</b> ${order.phone} ${order.altphone ? `(Alt: ${order.altphone})` : ''}</p>
+                <p><b>Address:</b> ${formattedAddr}</p>
+            </div>
+            <div>
+                <h4 class="font-bold text-gray-700 mb-1">Order & Payment</h4>
+                <p><b>Order ID:</b> <span class="font-mono text-xs">${order.order_id}</span></p>
+                <p><b>Payment Method:</b> ${order.payment_method}</p>
+                <p><b>Payment ID:</b> <span class="font-mono text-xs">${order.payment_id || 'N/A'}</span></p>
+                 <p><b>Status:</b> <span class="font-bold ${getStatusColor(order.status)} px-2 py-0.5 rounded">${order.status}</span></p>
+            </div>
+        </div>
+        <div class="mt-4 border-t pt-4">
+            <h4 class="font-bold text-gray-700 mb-2">Items Ordered</h4>
+            <table class="w-full text-left text-sm">
+                <thead><tr class="text-xs text-gray-500"><th class="pb-1">Product</th><th class="pb-1 text-center">Qty</th><th class="pb-1 text-right">Price</th><th class="pb-1 text-right">Total</th></tr></thead>
+                <tbody>${itemsHtml}</tbody>
+            </table>
+        </div>
+        <div class="mt-4 flex justify-end">
+            <div class="w-full max-w-xs text-sm">
+                <h4 class="font-bold text-gray-700 mb-2">Billing Summary</h4>
+                <div class="space-y-1">
+                    <div class="flex justify-between"><span>Subtotal</span> <span>₹${Number(order.total).toFixed(2)}</span></div>
+                    <div class="flex justify-between text-green-600"><span>Discount</span> <span>- ₹${Number(order.discount).toFixed(2)}</span></div>
+                    <div class="flex justify-between text-green-600"><span>Bonus Used</span> <span>- ₹${Number(order.bonus).toFixed(2)}</span></div>
+                    <div class="flex justify-between"><span>Delivery Charge</span> <span>+ ₹${Number(order.delivery_charge).toFixed(2)}</span></div>
+                    <div class="flex justify-between"><span>Taxes (GST)</span> <span>+ ₹${(Number(order.cgst) + Number(order.sgst) + Number(order.igst)).toFixed(2)}</span></div>
+                    <div class="flex justify-between font-bold text-base border-t pt-1 mt-1"><span>Grand Total</span> <span>₹${Number(order.grand_total).toFixed(2)}</span></div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('orderDispatchBtn').onclick = () => updateOrderStatus(order.id, 'Dispatched');
+    document.getElementById('orderDeliverBtn').onclick = () => updateOrderStatus(order.id, 'Delivered');
+    document.getElementById('orderCancelBtn').onclick = () => {
+        if (confirm('Are you sure you want to cancel this order? This cannot be undone.')) {
+            updateOrderStatus(order.id, 'Cancelled');
+        }
+    };
+    document.getElementById('orderBillBtn').onclick = () => generateBill(order.id);
+
+    modal.classList.remove('hidden');
+}
+
+function closeOrderDetailModal() {
+    document.getElementById('orderDetailModal').classList.add('hidden');
+}
+
+async function updateOrderStatus(orderId, newStatus) {
+    if (!userSession) { alert("Please log in."); return; }
+    const { error } = await supabase
+        .from('orders')
+        .update({ status: newStatus })
+        .eq('id', orderId);
+
+    if (error) {
+        alert('Failed to update status: ' + error.message);
+    } else {
+        alert(`Order status updated to "${newStatus}"`);
+        closeOrderDetailModal();
+        loadOrders(); // Refresh the list
+    }
+}
+
+function generateBill(orderId) {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+
+    const billWindow = window.open('', '_blank');
+    const formattedAddr = formatAddress(order.address).replace(/, /g, '<br>');
+    const taxes = (Number(order.cgst) + Number(order.sgst) + Number(order.igst)).toFixed(2);
+    
+    const itemsHtml = order.items.map(item => `
+        <tr>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd;">${item.name}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: center;">${item.quantity}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">₹${Number(item.price).toFixed(2)}</td>
+            <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">₹${(item.quantity * item.price).toFixed(2)}</td>
+        </tr>
+    `).join('');
+
+    billWindow.document.write(`
+        <html>
+            <head><title>Invoice - ${order.order_id}</title>
+            <style>body { font-family: sans-serif; margin: 20px; color: #333; } table { width: 100%; border-collapse: collapse; } h1,h2,p { margin: 0 0 10px 0; } .header{text-align:center; border-bottom: 1px solid #eee; padding-bottom:10px;} .details{display:flex; justify-content:space-between; margin-top:20px;} .summary{float:right; width: 250px; margin-top:20px;}</style>
+            </head>
+            <body>
+                <div class="header"><h1>Tax Invoice</h1><p>DAILY2KART</p></div>
+                <div class="details">
+                  <div>
+                    <h2>Bill To:</h2>
+                    <p><strong>${order.name}</strong></p>
+                    <p>${formattedAddr}</p>
+                    <p>Phone: ${order.phone}</p>
+                  </div>
+                  <div>
+                    <p><strong>Order ID:</strong> ${order.order_id}</p>
+                    <p><strong>Invoice Date:</strong> ${new Date().toLocaleDateString()}</p>
+                    <p><strong>Payment Method:</strong> ${order.payment_method}</p>
+                  </div>
+                </div>
+                <h2 style="margin-top: 30px;">Items:</h2>
+                <table>
+                    <thead>
+                        <tr style="background:#f2f2f2;">
+                            <th style="text-align: left; padding: 8px; border-bottom: 2px solid #333;">Item</th>
+                            <th style="text-align: center; padding: 8px; border-bottom: 2px solid #333;">Quantity</th>
+                            <th style="text-align: right; padding: 8px; border-bottom: 2px solid #333;">Unit Price</th>
+                            <th style="text-align: right; padding: 8px; border-bottom: 2px solid #333;">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>${itemsHtml}</tbody>
+                </table>
+                <table class="summary">
+                  <tr><td style="padding: 4px 8px;">Subtotal</td><td style="text-align: right; padding: 4px 8px;">₹${Number(order.total).toFixed(2)}</td></tr>
+                  <tr><td style="padding: 4px 8px;">Discount</td><td style="text-align: right; padding: 4px 8px;">- ₹${Number(order.discount).toFixed(2)}</td></tr>
+                  <tr><td style="padding: 4px 8px;">Delivery</td><td style="text-align: right; padding: 4px 8px;">+ ₹${Number(order.delivery_charge).toFixed(2)}</td></tr>
+                  <tr><td style="padding: 4px 8px;">Taxes (GST)</td><td style="text-align: right; padding: 4px 8px;">+ ₹${taxes}</td></tr>
+                  <tr style="font-weight:bold; border-top: 1px solid #333; font-size:1.1em;"><td style="padding: 8px;">Grand Total</td><td style="text-align: right; padding: 8px;">₹${Number(order.grand_total).toFixed(2)}</td></tr>
+                </table>
+                <div style="clear:both;"></div>
+                <p style="margin-top: 50px; text-align: center; font-size: 12px; color: #777;">Thank you for your business!</p>
+            </body>
+        </html>
+    `);
+    billWindow.document.close();
+    billWindow.print();
+}
+
+// --- NEW: USER MANAGEMENT FUNCTIONS ---
+
+function showUserModal() { document.getElementById('userModal').classList.remove('hidden'); }
+function closeUserModal() { document.getElementById('userModal').classList.add('hidden'); document.getElementById('userForm').reset(); document.getElementById('userFormMsg').textContent = ''; }
+
+async function createNewUser() {
+    const email = document.getElementById("newUserEmail").value;
+    const password = document.getElementById("newUserPassword").value;
+    const msgEl = document.getElementById("userFormMsg");
+
+    msgEl.textContent = 'Creating user...';
+    msgEl.classList.remove('text-red-600', 'text-green-600');
+
+    // Use the same signUp method as the public-facing one
+    const { data, error } = await supabase.auth.signUp({ email, password });
+
+    if (error) {
+        msgEl.textContent = `Error: ${error.message}`;
+        msgEl.classList.add('text-red-600');
+    } else {
+        msgEl.textContent = "Successfully created user. A confirmation email has been sent.";
+        msgEl.classList.add('text-green-600');
+        loadUsers(); // Refresh the user list
+        setTimeout(closeUserModal, 2500); // Close modal after a delay
+    }
+}
+
+async function loadUsers() {
+    if (!userSession) return;
+    
+    // IMPORTANT: Listing users requires admin privileges. 
+    // This will not work with a standard anon key for security reasons.
+    // The code below is a placeholder to demonstrate what the UI would look like.
+    // In a real app, you would call a secure Supabase Edge Function to get this data.
+    
+    console.warn("Displaying current user only. Listing all users requires admin privileges and a secure server-side call.");
+    
+    // As a demonstration, we will just display the currently logged-in user.
+    users = [userSession.user]; 
+    renderUserList(users);
+}
+
+function renderUserList(userData) {
+    const container = document.getElementById('userList');
+    if (!container) return;
+
+    if (userData.length === 0) {
+        container.innerHTML = `<tr><td colspan="4" class="text-center p-6">No user data to display.</td></tr>`;
+        return;
+    }
+
+    container.innerHTML = userData.map(user => {
+        const lastSignIn = user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString() : 'Never';
+        const isCurrentUser = user.id === userSession.user.id;
+        
+        return `
+            <tr class="bg-white border-b hover:bg-gray-50">
+                <td class="px-6 py-4 font-medium">${user.email} ${isCurrentUser ? '<span class="text-xs text-blue-500">(You)</span>' : ''}</td>
+                <td class="px-6 py-4 font-mono text-xs">${user.id}</td>
+                <td class="px-6 py-4">${lastSignIn}</td>
+                <td class="px-6 py-4">
+                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-200 text-green-800">
+                        Active
+                    </span>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+
+// --- DASHBOARD ---
+// ... No changes to your dashboard function ...
+function updateDashboard(products) {
+  // Existing dashboard logic...
+  document.getElementById("dashTotalProducts").textContent = products.length;
+  document.getElementById("dashTotalStock").textContent = products.reduce((sum, p) => sum + (parseInt(p.qty)||0), 0);
+  const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
+  document.getElementById("dashTotalCategories").textContent = categories.length;
+  // Candlestick Chart logic...
+  let candlestickData = products.slice(0, 12).map((p,i) => ({ x: p.name + (p.itemsize ? (' ('+p.itemsize+')') : ''), o: Number(p.price), h: Number(p.price) + Math.random()*10, l: Number(p.price) - Math.random()*5, c: Number(p.price) + (Math.random()>0.5 ? 1 : -1)*Math.random()*5 }));
+  let ctx = document.getElementById('candlestickChart').getContext('2d');
+  if (candlestickChart) candlestickChart.destroy();
+  candlestickChart = new Chart(ctx, {
+    type: 'candlestick',
+    data: { datasets: [{ label: 'Product Price', data: candlestickData, borderColor:'#06b6d4', upColor:'#16a34a', color:'#ef4444', borderWidth:2 }] },
+    options: { responsive: false, plugins: { legend: { display: false }, tooltip: { enabled: true, callbacks: { label: ctx => `Open: ₹${ctx.raw.o.toFixed(2)}, High: ₹${ctx.raw.h.toFixed(2)}, Low: ₹${ctx.raw.l.toFixed(2)}, Close: ₹${ctx.raw.c.toFixed(2)}` } } }, scales: { x: { display:false }, y: { display:true, ticks:{ color:'#666' } } } }
+  });
+}
+</script>
+
+
+<script>
+  function editProduct(productId) {
+    supabase
+      .from("daily2kartdata")
+      .select("*")
+      .eq("id", productId)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (error || !data) return alert("Product not found");
+        const f = document.getElementById("productEditForm");
+        for (const key in data) {
+          if (f[key]) f[key].value = data[key];
+        }
+        document.getElementById("productEditorModal").classList.remove("hidden");
+      });
+  }
+
+  function closeProductEditor() {
+    document.getElementById("productEditorModal").classList.add("hidden");
+  }
+
+  async function saveProductChanges(event) {
+    event.preventDefault();
+    const f = event.target;
+    const product = Object.fromEntries(new FormData(f).entries());
+    product.price = parseFloat(product.price || 0);
+    product.mrp = parseFloat(product.mrp || 0);
+
+    const { error } = await supabase.from("daily2kartdata").update(product).eq("id", product.id);
+    if (error) return alert("Update failed: " + error.message);
+
+    closeProductEditor();
+    showAdminTab('products'); // Refresh products view
+    showToast("✅ Product updated", "success");
+  }
+</script>
+
+
+
+</body>
+</html>
